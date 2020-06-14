@@ -1,29 +1,35 @@
 #version 300 es
 
-// dolson,2019
+// dolson,2020
 
 out vec4 out_FragColor; 
 varying vec2 uVu;
 
 uniform vec2 u_resolution;
 uniform float u_time;
+uniform int u_hash;
 
-uniform vec3 u_cam_target;
-
-uniform vec3 u_light_pos;
+uniform int u_rotations;
+uniform int u_noise;
+uniform vec3 u_dif;
+uniform int u_df;
+uniform int u_o1;
+uniform int u_o2;
 
 const float E   =  2.7182818;
 const float PI  =  radians(180.0); 
 const float PHI =  (1.0 + sqrt(5.0)) / 2.0;
 
-//15551*89491 = 1391674541
 float hash(float p) {
+
     uvec2 n = uint(int(p)) * uvec2(1391674541U,2531151992.0 );
     uint h = (n.x ^ n.y) * 1391674541U;
     return float(h) * (1.0/float(0xffffffffU));
+
 }
 
 vec3 hash3(vec3 p) {
+
    uvec3 h = uvec3(ivec3(  p)) *  uvec3(1391674541U,2531151992.0,2860486313U);
    h = (h.x ^ h.y ^ h.z) * uvec3(1391674541U,2531151992U,2860486313U);
    return vec3(h) * (1.0/float(0xffffffffU));
@@ -85,7 +91,7 @@ float noise(vec3 x) {
 }
 
 
-float fractal(vec3 x,int octaves,float h) {
+float f(vec3 x,int octaves,float h) {
 
     float t = 0.0;
 
@@ -133,11 +139,6 @@ float smoi(float d1,float d2,float k) {
     return mix(d2,d1,h) + k * h * (1.0 - h);
 }
 
-float sphere(vec3 p,float r) { 
-     
-    return length(p) - r;
-}
-
 float roundCone(vec3 p,float r1,float r2,float h) {
 
     vec2 q = vec2(length(vec2(p.x,p.y)),p.z);
@@ -155,14 +156,6 @@ float plane(vec3 p,vec4 n) {
 
     return dot(p,n.xyz) + n.w;
 }
-
-float capsule(vec3 p,vec3 a,vec3 b,float r) {
-
-    vec3 pa = p - a;
-    vec3 ba = b - a;
-    float h = clamp(dot(pa,ba)/dot(ba,ba),0.0,1.0);
-    return length(pa - ba * h) - r;
-} 
 
 float box(vec3 p,vec3 b) {
 
@@ -218,7 +211,7 @@ float octahedron(vec3 p,float s) {
 vec2 scene(vec3 p) { 
 
 vec2 res = vec2(1.0,0.0);
-float scale = 45. / PI;
+float scale = u_rotations / PI;
 
 vec2 h = p.xz; 
 float r = length(h); 
@@ -229,7 +222,33 @@ float mul = r/scale;
 
 float d = 0.;
 
+if(u_df == 0) {
 d = (length(vec3(h,p.y/mul)) - 1.) * mul;
+}
+
+if(u_df == 1) {
+d = box(vec3(h,p.y/mul),vec3(.5)) * mul;
+}
+
+if(u_df == 2) {
+d = roundCone(vec3(h,p.y/mul),.25,.5,2.) * mul;
+}
+
+if(u_df == 3) {
+d = octahedron(vec3(h,p.y/mul),1.) * mul;
+}
+
+if(u_df == 4) {
+d = cylinder(vec3(h,p.y/mul),1.,.5) * mul;
+}
+
+if(u_df == 5) {
+d = hexPrism(vec3(h,p.y/mul),vec2(1.,.5)) * mul;
+}
+
+if(u_df == 6) {
+d = torus(vec3(h,p.y/mul),vec2(1.,.25)) * mul;
+}
 
 res = vec2(smod(sphere(p,.125),d,
           .005),1.);
@@ -257,11 +276,6 @@ vec2 rayScene(vec3 ro,vec3 rd) {
         if(500. < depth) { d = -1.0; }
         return vec2(depth,d);
 
-}
-
-vec3 fog(vec3 c,vec3 fc,float b,float distance) {
-    float depth = 1. - exp(-distance *b);
-    return mix(c,fc,depth);
 }
 
 float shadow(vec3 ro,vec3 rd ) {
@@ -316,8 +330,6 @@ vec3 rayCamDir(vec2 uv,vec3 camPosition,vec3 camTarget,float fPersp) {
 
 vec3 render(vec3 ro,vec3 rd) {
 
-float t = u_time;
-
 vec2 d = rayScene(ro, rd);
 
 vec3 col = vec3(1.);
@@ -326,7 +338,7 @@ if(d.y >= 0.) {
 
 vec3 p = ro + rd * d.x;
 vec3 n = calcNormal(p);
-vec3 l = normalize( u_light_pos );
+vec3 l = normalize(vec3(0.,10.,0.));
 vec3 h = normalize(l - rd);
 vec3 r = reflect(rd,n);
 
@@ -339,10 +351,14 @@ vec3 linear = vec3(0.);
 
 dif *= shadow(p,l);
 
-linear += dif * vec3(.5,.45,.35 );
+linear += dif * vec3(u_dif);
 linear += amb * vec3(.03);
 linear += ref * vec3(.05,.1,.01);
 linear += fre * vec3(.045,.005,.05);
+
+if(u_noise == 1) {
+col += f(p + f(p + cell(p,floor(hash(100.)*75),0),o1,hash(15.)),o2,hash(5.)); 
+}
 
 col = col * linear;
 col += 5. * spe * vec3(1.,.5,.9);
@@ -354,7 +370,7 @@ return col;
 
 void main() {
 
-vec3 cam_target = u_cam_target;
+vec3 cam_target = vec3(0.);
 vec3 cam_pos = cameraPosition;
 
 vec2 uvu = -1. + 2. * uVu.xy;
