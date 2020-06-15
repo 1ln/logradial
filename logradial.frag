@@ -7,7 +7,7 @@ varying vec2 uVu;
 
 uniform vec2 u_resolution;
 uniform float u_time;
-uniform int u_hash;
+uniform float u_hash;
 
 uniform int u_rotations;
 uniform int u_noise;
@@ -22,7 +22,7 @@ const float PHI =  (1.0 + sqrt(5.0)) / 2.0;
 
 float hash(float p) {
 
-    uvec2 n = uint(int(p)) * uvec2(1391674541U,2531151992.0 );
+    uvec2 n = uint(int(p)) * uvec2(1391674541U,2531151992.0 * u_hash);
     uint h = (n.x ^ n.y) * 1391674541U;
     return float(h) * (1.0/float(0xffffffffU));
 
@@ -211,7 +211,7 @@ float octahedron(vec3 p,float s) {
 vec2 scene(vec3 p) { 
 
 vec2 res = vec2(1.0,0.0);
-float scale = u_rotations / PI;
+float scale = float(u_rotations) / PI;
 
 vec2 h = p.xz; 
 float r = length(h); 
@@ -231,7 +231,7 @@ d = box(vec3(h,p.y/mul),vec3(.5)) * mul;
 }
 
 if(u_df == 2) {
-d = roundCone(vec3(h,p.y/mul),.25,.5,2.) * mul;
+d = roundCone(vec3(h,p.y/mul),1.,.5,2.) * mul;
 }
 
 if(u_df == 3) {
@@ -243,14 +243,14 @@ d = cylinder(vec3(h,p.y/mul),1.,.5) * mul;
 }
 
 if(u_df == 5) {
-d = hexPrism(vec3(h,p.y/mul),vec2(1.,.5)) * mul;
+d = hexPrism(vec3(h,p.y/mul),vec2(.5,.25)) * mul;
 }
 
 if(u_df == 6) {
 d = torus(vec3(h,p.y/mul),vec2(1.,.25)) * mul;
 }
 
-res = vec2(smod(sphere(p,.125),d,
+res = vec2(smod(length(p) - .125,d,
           .005),1.);
 
 return res;
@@ -338,31 +338,32 @@ if(d.y >= 0.) {
 
 vec3 p = ro + rd * d.x;
 vec3 n = calcNormal(p);
-vec3 l = normalize(vec3(0.,10.,0.));
+vec3 l = normalize(vec3(0.));
 vec3 h = normalize(l - rd);
 vec3 r = reflect(rd,n);
+
+if(d.y == 1.) {
+col = vec3(u_dif);
+}
 
 float amb = sqrt(clamp(0.5 + 0.5 * n.y,0.0,1.0));
 float dif = clamp(dot(n,l),0.0,1.0);
 float spe = pow(clamp(dot(n,h),0.0,1.0),16.) * dif * (.04 + 0.9 * pow(clamp(1. + dot(h,rd),0.,1.),5.));
 float fre = pow(clamp(1. + dot(n,rd),0.0,1.0),2.0);
 float ref = smoothstep(-.2,.2,r.y);
-vec3 linear = vec3(0.);
+vec3 linear = vec3(0.1);
 
 dif *= shadow(p,l);
 
-linear += dif * vec3(u_dif);
+linear += dif * vec3(.15);
 linear += amb * vec3(.03);
-linear += ref * vec3(.05,.1,.01);
-linear += fre * vec3(.045,.005,.05);
+linear += ref * vec3(.1);
+linear += fre * vec3(.045);
 
-if(u_noise == 1) {
-col += f(p + f(p + cell(p,floor(hash(100.)*75),0),o1,hash(15.)),o2,hash(5.)); 
-}
+col += f(p,u_o1,hash(100.));
 
 col = col * linear;
-col += 5. * spe * vec3(1.,.5,.9);
-
+col += 5. * spe * vec3(.5);
 }
 
 return col;
