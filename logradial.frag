@@ -116,6 +116,10 @@ float sin3(vec3 p,float h) {
     return sin(p.x*h) * sin(p.y*h) * sin(p.z*h);
 }
 
+float fmCol(float t,vec3 a,vec3 b,vec3 c,vec3 d) {
+    return a + b * cos((2. * PI) * (c * t + d));
+}
+
 vec2 opu(vec2 d1,vec2 d2) {
 
     return (d1.x < d2.x) ? d1 : d2;
@@ -250,8 +254,7 @@ if(u_df == 6) {
 d = torus(vec3(h,p.y/mul),vec2(1.,.25)) * mul;
 }
 
-res = vec2(smod(length(p) - .125,d,
-          .005),1.);
+res = vec2(d,1.);
 
 return res;
 
@@ -358,9 +361,20 @@ dif *= shadow(p,l);
 linear += dif * vec3(.15);
 linear += amb * vec3(.03);
 linear += ref * vec3(.1);
-linear += fre * vec3(.045);
+linear += fre * vec3(.045); 
 
-col += f(p,u_o1,hash(100.));
+ 
+float n,n1,n2,n3,n4,n5,n6,n7,n8,n9,n10,n11,n12;
+
+n += f(p,u_o1,hash(100.));
+
+n1 += f(p + f(p,u_o2,hash(126.)),u_o1,hash(10.));
+n2 += sin3(p,f(p,u_o1,hash(12.)));
+
+col += fmCol(n,vec3(n1,n2,n3),
+               vec3(n4,n5,n6),
+               vec3(n7,n8,n9),
+               vec3(n10,n11,n12));
 
 col = col * linear;
 col += 5. * spe * vec3(.5);
