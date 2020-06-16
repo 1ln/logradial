@@ -38,14 +38,14 @@ function init() {
     nhash = new Math.seedrandom();
     hash = nhash();
 
-    df = Math.round(nhash() *  10);
+    df = Math.round(nhash() *  6) ;
 
-    rotations = 45;
+    rotations = Math.round(nhash() * 75) + 8;
 
     dif = new THREE.Color(nhash(),nhash(),nhash());
-    noise = 1.;
-    o1 = 5;
-    o2 = 4;
+    noise = Math.round(nhash() * 5) + 1;
+    o1 = Math.round(nhash() * 8) + 2;
+    o2 = Math.round(nhash() * 8) + 2;
     
     cam.position.set(5.0,10.0,25.0);
 
@@ -107,6 +107,4 @@ ShaderLoader("render.vert","logradial.frag",
         } 
        
     render();
-
-    }
-)   
+    })
