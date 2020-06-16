@@ -16,6 +16,10 @@ uniform int u_df;
 uniform int u_o1;
 uniform int u_o2;
 
+const int steps = 250;
+const float eps = 0.0001;
+const float trace_dist = 500.;
+
 const float E   =  2.7182818;
 const float PI  =  radians(180.0); 
 const float PHI =  (1.0 + sqrt(5.0)) / 2.0;
@@ -30,7 +34,7 @@ float hash(float p) {
 
 vec3 hash3(vec3 p) {
 
-   uvec3 h = uvec3(ivec3(  p)) *  uvec3(1391674541U,2531151992.0,2860486313U);
+   uvec3 h = uvec3(ivec3(  p)) *  uvec3(1391674541U,2531151992.0 * u_hash,2860486313U);
    h = (h.x ^ h.y ^ h.z) * uvec3(1391674541U,2531151992U,2860486313U);
    return vec3(h) * (1.0/float(0xffffffffU));
 
@@ -72,11 +76,10 @@ float cell(vec3 x,float iterations,int type) {
         }
     }
  
-    return min_dist;  
-
+    return min_dist;
 }
 
-float noise(vec3 x) {
+float ns(vec3 x) {
 
     vec3 p = floor(x);
     vec3 f = fract(x);
@@ -102,7 +105,7 @@ float f(vec3 x,int octaves,float h) {
 
     for(int i = 0; i < octaves; i++) {
  
-    t += a * noise(f * x); 
+    t += a * ns(f * x); 
     f *= 2.0; 
     a *=  g;  
     
@@ -116,7 +119,7 @@ float sin3(vec3 p,float h) {
     return sin(p.x*h) * sin(p.y*h) * sin(p.z*h);
 }
 
-float fmCol(float t,vec3 a,vec3 b,vec3 c,vec3 d) {
+vec3 fmCol(float t,vec3 a,vec3 b,vec3 c,vec3 d) {
     return a + b * cos((2. * PI) * (c * t + d));
 }
 
@@ -224,6 +227,8 @@ h *= scale;
 h = mod(h,2.) - 1.;
 float mul = r/scale;
 
+p.y += ns(p * .5) + .5;
+
 float d = 0.;
 
 if(u_df == 0) {
@@ -265,18 +270,18 @@ vec2 rayScene(vec3 ro,vec3 rd) {
     float depth = 0.0;
     float d = -1.0;
 
-    for(int i = 0; i < 1250; i++) {
+    for(int i = 0; i < steps; i++) {
 
         vec3 p = ro + depth * rd;
         vec2 dist = scene(p);
    
-        if(abs( dist.x) < 0.001 || 500. <  dist.x ) { break; }
+        if(abs( dist.x) < eps || trace_dist <  dist.x ) { break; }
         depth += dist.x;
         d = dist.y;
 
         }
  
-        if(500. < depth) { d = -1.0; }
+        if(trace_dist < depth) { d = -1.0; }
         return vec2(depth,d);
 
 }
@@ -307,7 +312,7 @@ float shadow(vec3 ro,vec3 rd ) {
 
 vec3 calcNormal(vec3 p) {
 
-    vec2 e = vec2(1.0,-1.0) * 0.001;
+    vec2 e = vec2(1.0,-1.0) * eps;
 
     return normalize(vec3(
     vec3(e.x,e.y,e.y) * scene(p + vec3(e.x,e.y,e.y)).x +
@@ -363,23 +368,27 @@ linear += amb * vec3(.03);
 linear += ref * vec3(.1);
 linear += fre * vec3(.045); 
 
- 
-float n,n1,n2,n3,n4,n5,n6,n7,n8,n9,n10,n11,n12;
+float n0,n1,n2,n3;
 
-n += f(p,u_o1,hash(100.));
+n0 += f(p,6,hash(100.));
+n1 += f(p + f(p,6,hash(126.)),u_o1,hash(10.));
+n2 += sin3(p,f(p,8,hash(12.)));
+n3 += f(p + sin3(p,hash(35.)),u_o2,hash(132.));  
 
-n1 += f(p + f(p,u_o2,hash(126.)),u_o1,hash(10.));
-n2 += sin3(p,f(p,u_o1,hash(12.)));
+if(n0 < smoothstep(0.,1.,f(p + f(p,u_o2,hash(111.)),8,ns(p)))) {
 
-col += fmCol(n,vec3(n1,n2,n3),
-               vec3(n4,n5,n6),
-               vec3(n7,n8,n9),
-               vec3(n10,n11,n12));
+col += fmCol(n0,vec3(n1,hash(15.),hash(44.)),
+               vec3(hash(112.),n2,hash(105.)),
+               vec3(hash(62.),hash(201.),n3),
+               vec3(u_dif));
+} else {
+col += mix(p,col,smoothstep(p.y,ns(p+col),f(p + f(p,8,.5),6,.62) ));
+
+}
 
 col = col * linear;
 col += 5. * spe * vec3(.5);
 }
-
 return col;
 }
 
