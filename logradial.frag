@@ -10,11 +10,7 @@ uniform float u_time;
 uniform float u_hash;
 
 uniform int u_rotations;
-uniform int u_noise;
-uniform vec3 u_dif;
-uniform int u_df;
-uniform int u_o1;
-uniform int u_o2;
+uniform vec3 u_dif; 
 
 const int steps = 250;
 const float eps = 0.0001;
@@ -128,24 +124,6 @@ vec2 opu(vec2 d1,vec2 d2) {
     return (d1.x < d2.x) ? d1 : d2;
 } 
 
-float smou(float d1,float d2,float k) {
-
-    float h = clamp(0.5 + 0.5 * (d2-d1)/k,0.0,1.0);
-    return mix(d2,d1,h) - k * h * (1.0 - h);
-}
-
-float smod(float d1,float d2,float k) {
-
-    float h = clamp(0.5 - 0.5 * (d2+d1)/k,0.0,1.0);
-    return mix(d2,-d1,h) + k * h * (1.0 - h);
-}
-
-float smoi(float d1,float d2,float k) {
-
-    float h = clamp(0.5 + 0.5 * (d2-d1)/k,0.0,1.0);
-    return mix(d2,d1,h) + k * h * (1.0 - h);
-}
-
 float roundCone(vec3 p,float r1,float r2,float h) {
 
     vec2 q = vec2(length(vec2(p.x,p.y)),p.z);
@@ -159,22 +137,11 @@ float roundCone(vec3 p,float r1,float r2,float h) {
     return dot(q,vec2(a,b)) - r1;
 }
 
-float plane(vec3 p,vec4 n) {
-
-    return dot(p,n.xyz) + n.w;
-}
-
 float box(vec3 p,vec3 b) {
 
     vec3 d = abs(p) - b;
     return length(max(d,0.0)) + min(max(d.x,max(d.y,d.z)),0.0);
-}
-
-float torus(vec3 p,vec2 t) {
-
-    vec2 q = vec2(length(vec2(p.x,p.y)) - t.x,p.z);
-    return length(q) - t.y; 
-}
+} 
 
 float cylinder(vec3 p,float h,float r) {
     
@@ -213,7 +180,7 @@ float octahedron(vec3 p,float s) {
 
     float k = clamp(0.5 *(q.z-q.y+s),0.0,s);
     return length(vec3(q.x,q.y-s+k,q.z - k)); 
-} 
+}  
 
 vec2 scene(vec3 p) { 
 
@@ -230,34 +197,7 @@ float mul = r/scale;
 p.y += ns(p * .5) + .5;
 
 float d = 0.;
-
-if(u_df == 0) {
-d = (length(vec3(h,p.y/mul)) - 1.) * mul;
-}
-
-if(u_df == 1) {
-d = box(vec3(h,p.y/mul),vec3(.5)) * mul;
-}
-
-if(u_df == 2) {
-d = roundCone(vec3(h,p.y/mul),1.,.5,2.) * mul;
-}
-
-if(u_df == 3) {
-d = octahedron(vec3(h,p.y/mul),1.) * mul;
-}
-
-if(u_df == 4) {
-d = cylinder(vec3(h,p.y/mul),1.,.5) * mul;
-}
-
-if(u_df == 5) {
-d = hexPrism(vec3(h,p.y/mul),vec2(.5,.25)) * mul;
-}
-
-if(u_df == 6) {
-d = torus(vec3(h,p.y/mul),vec2(1.,.25)) * mul;
-}
+d = roundCone(vec3(h,p.y/mul),1.,.5,2.) * mul; 
 
 res = vec2(d,1.);
 
@@ -346,7 +286,7 @@ if(d.y >= 0.) {
 
 vec3 p = ro + rd * d.x;
 vec3 n = calcNormal(p);
-vec3 l = normalize(vec3(0.));
+vec3 l = normalize(vec3(0.,10.,0.));
 vec3 h = normalize(l - rd);
 vec3 r = reflect(rd,n);
 
@@ -371,19 +311,18 @@ linear += fre * vec3(.045);
 float n0,n1,n2,n3;
 
 n0 += f(p,6,hash(100.));
-n1 += f(p + f(p,6,hash(126.)),u_o1,hash(10.));
+n1 += f(p + f(p,6,hash(126.)),5,hash(10.));
 n2 += sin3(p,f(p,8,hash(12.)));
-n3 += f(p + sin3(p,hash(35.)),u_o2,hash(132.));  
+n3 += f(p + sin3(p,hash(35.)),5,hash(132.));
 
-if(n0 < smoothstep(0.,1.,f(p + f(p,u_o2,hash(111.)),8,ns(p)))) {
+if(n0 < smoothstep(0.,1.,n1)) {
 
 col += fmCol(n0,vec3(n1,hash(15.),hash(44.)),
                vec3(hash(112.),n2,hash(105.)),
                vec3(hash(62.),hash(201.),n3),
-               vec3(u_dif));
+               vec3(1.));
 } else {
-col += mix(p,col,smoothstep(p.y,ns(p+col),f(p + f(p,8,.5),6,.62) ));
-
+col = mix(col,vec3(.5),n1);
 }
 
 col = col * linear;

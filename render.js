@@ -11,9 +11,6 @@ let nhash,hash;
 let cam,scene,geometry,mesh,mat;
 
 let rotations;
-
-let noise,o1,o2;
-let df;
 let dif;
 
 let clock;
@@ -38,16 +35,10 @@ function init() {
     nhash = new Math.seedrandom();
     hash = nhash();
 
-    df = Math.round(nhash() *  6) ;
-
-    rotations = Math.round(nhash() * 75) + 8;
-
+    rotations = Math.round(nhash() * 75) + 45;
     dif = new THREE.Color(nhash(),nhash(),nhash());
-    noise = Math.round(nhash() * 5) + 1;
-    o1 = Math.round(nhash() * 8) + 2;
-    o2 = Math.round(nhash() * 8) + 2;
     
-    cam.position.set(5.0,10.0,25.0);
+    cam.position.set(25.0,45.0,125.0);
 
     scene = new THREE.Scene();
     geometry = new THREE.PlaneBufferGeometry(2,2);
@@ -57,11 +48,7 @@ function init() {
         "u_time"       : { value : 1.0 },
         "u_resolution" : new THREE.Uniform(new THREE.Vector2(w,h)),
         "u_dif"        : new THREE.Uniform(new THREE.Vector3(dif)),
-        "u_noise"      : { value: noise },
         "u_rotations"  : { value: rotations },
-        "u_o1"         : { value: o1 },
-        "u_o2"         : { value: o2 },
-        "u_df"         : { value: df },          
         "u_hash"       : { value: hash }
 
     };   
@@ -94,10 +81,6 @@ ShaderLoader("render.vert","logradial.frag",
         requestAnimationFrame(render);
     
         uniforms["u_time"     ].value = performance.now();
-        uniforms["u_df"       ].value = df;
-        uniforms["u_noise"    ].value = noise; 
-        uniforms["u_o1"       ].value = o1;
-        uniforms["u_o2"       ].value = o2;
         uniforms["u_dif"      ].value = dif;
         uniforms["u_rotations"].value = rotations;
         uniforms["u_hash"     ].value = hash;
